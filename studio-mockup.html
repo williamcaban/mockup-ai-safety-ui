@@ -263,6 +263,46 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 .dr-bw{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
 .dr-bf{height:100%;border-radius:3px}
 
+/* ── FLEET TABLE ── */
+.fleet-corpus{display:grid;grid-template-columns:repeat(7,1fr);gap:10px;
+  background:#ffffff;border:1px solid var(--border);border-radius:6px;
+  padding:14px 18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.fc-item{text-align:center}
+.fc-val{font-family:var(--fm);font-size:22px;font-weight:700;line-height:1;margin-bottom:2px}
+.fc-lbl{font-family:var(--fm);font-size:8.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--txt3)}
+.fleet-table{width:100%;border-collapse:separate;border-spacing:0;font-size:11.5px}
+.fleet-table thead th{font-family:var(--fm);font-size:8.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--txt3);padding:8px 10px;text-align:left;border-bottom:2px solid var(--border);
+  background:#ffffff;position:sticky;top:0}
+.fleet-table tbody tr{cursor:pointer;transition:background .1s}
+.fleet-table tbody tr:hover{background:var(--bg-alt)}
+.fleet-table tbody tr:hover .fleet-report{opacity:1}
+.fleet-table td{padding:10px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.fleet-table tr:last-child td{border-bottom:none}
+/* score cell pill */
+.sc-pill{display:inline-flex;align-items:center;justify-content:center;
+  width:36px;height:22px;border-radius:4px;font-family:var(--fm);font-size:11px;font-weight:700;
+  color:#fff}
+.sp-cr{background:#b91c1c}   /* <25 */
+.sp-lo{background:#c04020}   /* 25-44 */
+.sp-md{background:#b45309}   /* 45-64 */
+.sp-hi{background:#047857}   /* ≥65 */
+.fleet-app{display:flex;flex-direction:column;gap:2px}
+.fleet-app-name{font-size:12.5px;font-weight:600;color:var(--txt)}
+.fleet-app-meta{font-family:var(--fm);font-size:9.5px;color:var(--txt3)}
+.fleet-ti{font-family:var(--fm);font-size:18px;font-weight:800;min-width:36px}
+.fleet-report{font-family:var(--fm);font-size:11px;color:var(--teal);
+  opacity:0;transition:opacity .1s;white-space:nowrap;font-weight:600}
+.fleet-alert{display:inline-flex;align-items:center;gap:4px;font-family:var(--fm);font-size:10px;
+  padding:2px 7px;border-radius:8px}
+/* breadcrumb */
+.breadcrumb{display:flex;align-items:center;gap:6px;font-family:var(--fm);font-size:10px;
+  color:var(--txt3);margin-bottom:18px;padding:8px 0;border-bottom:1px solid var(--border)}
+.breadcrumb-link{color:var(--teal);cursor:pointer;font-weight:600}
+.breadcrumb-link:hover{text-decoration:underline}
+.breadcrumb-sep{color:var(--txt3)}
+.breadcrumb-cur{color:var(--txt2);font-weight:500}
+
 /* ── COMPLIANCE STUB ── */
 .stub{display:flex;flex-direction:column;align-items:center;justify-content:center;
   height:300px;gap:12px;color:var(--txt2)}
@@ -457,6 +497,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 
 <!-- ── SIDEBAR ── -->
 <nav class="sidebar">
+  <div class="ng-lbl"><span>Fleet</span></div>
+  <div class="ni" onclick="nav(this,'v-fleet')">
+    <div class="ni-row">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="2.5" rx="1"/><rect x="1" y="7" width="14" height="2.5" rx="1"/><rect x="1" y="11" width="14" height="2.5" rx="1"/></svg>
+      Apps &amp; Guardrails
+    </div>
+    <span class="ni-sub">All AI apps · fleet trust scores</span>
+  </div>
+
   <div class="ng-lbl"><span>Assessment</span></div>
   <div class="ni on" onclick="nav(this,'v-overview')">
     <div class="ni-row">
@@ -567,8 +616,211 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 <!-- ── MAIN ── -->
 <main class="main">
 
+<!-- ══════════════════════════════════════════ FLEET DASHBOARD ══ -->
+<div class="view" id="v-fleet">
+  <div class="ph">
+    <h1>Apps &amp; Guardrails</h1>
+    <p>All deployed AI apps and agent harnesses · Trust Index + 6 TAI dimensions · live scan · 2026-08-20</p>
+  </div>
+
+  <!-- Corpus averages strip -->
+  <div class="fleet-corpus">
+    <div class="fc-item">
+      <div class="fc-val" style="color:var(--teal)">43</div>
+      <div class="fc-lbl">Fleet Trust Index</div>
+    </div>
+    <div class="fc-item">
+      <div class="fc-val sc-lo-t">39</div>
+      <div class="fc-lbl">Safety</div>
+    </div>
+    <div class="fc-item">
+      <div class="fc-val sc-lo-t">43</div>
+      <div class="fc-lbl">Security</div>
+    </div>
+    <div class="fc-item">
+      <div class="fc-val sc-md-t">53</div>
+      <div class="fc-lbl">Bias</div>
+    </div>
+    <div class="fc-item">
+      <div class="fc-val sc-lo-t">44</div>
+      <div class="fc-lbl">Risk</div>
+    </div>
+    <div class="fc-item">
+      <div class="fc-val sc-md-t">54</div>
+      <div class="fc-lbl">Trust</div>
+    </div>
+    <div class="fc-item">
+      <div class="fc-val sc-lo-t">36</div>
+      <div class="fc-lbl">Coverage</div>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <input type="text" placeholder="Search by name or model…" style="flex:1;min-width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:4px;background:#fff;font-family:var(--fm);font-size:11px;color:var(--txt);outline:none"/>
+    <select style="font-family:var(--fm);font-size:11px;background:#fff;border:1px solid var(--border);color:var(--txt2);padding:6px 10px;border-radius:4px">
+      <option>All Types</option><option>API Endpoint</option><option>Agent Harness</option><option>RAG Pipeline</option>
+    </select>
+    <select style="font-family:var(--fm);font-size:11px;background:#fff;border:1px solid var(--border);color:var(--txt2);padding:6px 10px;border-radius:4px">
+      <option>Trust Index (High → Low)</option><option>Trust Index (Low → High)</option><option>Most Alerts</option><option>Name A–Z</option>
+    </select>
+    <div style="font-family:var(--fm);font-size:10px;color:var(--txt3);margin-left:auto">5 apps · 2026-08-20</div>
+  </div>
+
+  <!-- Score legend -->
+  <div style="display:flex;gap:10px;margin-bottom:10px;font-family:var(--fm);font-size:9.5px;align-items:center">
+    <span style="color:var(--txt3)">Score:</span>
+    <span style="display:flex;align-items:center;gap:4px"><span class="sc-pill sp-hi" style="width:28px;height:16px;font-size:9px">65+</span><span style="color:var(--txt3)">High</span></span>
+    <span style="display:flex;align-items:center;gap:4px"><span class="sc-pill sp-md" style="width:28px;height:16px;font-size:9px">45</span><span style="color:var(--txt3)">Med</span></span>
+    <span style="display:flex;align-items:center;gap:4px"><span class="sc-pill sp-lo" style="width:28px;height:16px;font-size:9px">25</span><span style="color:var(--txt3)">Low</span></span>
+    <span style="display:flex;align-items:center;gap:4px"><span class="sc-pill sp-cr" style="width:28px;height:16px;font-size:9px">&lt;25</span><span style="color:var(--txt3)">Critical</span></span>
+  </div>
+
+  <!-- Fleet table -->
+  <div style="background:#fff;border:1px solid var(--border);border-radius:6px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+    <table class="fleet-table">
+      <thead>
+        <tr>
+          <th style="min-width:200px">App / Harness</th>
+          <th>Trust Index</th>
+          <th>Tier</th>
+          <th>Safety</th>
+          <th>Security</th>
+          <th>Bias</th>
+          <th>Risk</th>
+          <th>Trust</th>
+          <th>Coverage</th>
+          <th>Active Rails</th>
+          <th>Alerts</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <!-- Row 1: production-api (current) -->
+        <tr onclick="navTo('v-overview')" style="background:rgba(0,143,122,.03)">
+          <td>
+            <div class="fleet-app">
+              <div class="fleet-app-name">production-api</div>
+              <div class="fleet-app-meta">granite-3.1-8b-instruct · v2.3.1 · API endpoint</div>
+            </div>
+          </td>
+          <td><span class="fleet-ti sp-lo-t">42</span><span style="font-family:var(--fm);font-size:8px;color:var(--txt3)">/100</span></td>
+          <td><span class="tier-badge tier-emerging" style="font-size:8.5px">Emerging</span></td>
+          <td><span class="sc-pill sp-cr">31</span></td>
+          <td><span class="sc-pill sp-cr">28</span></td>
+          <td><span class="sc-pill sp-md">52</span></td>
+          <td><span class="sc-pill sp-lo">44</span></td>
+          <td><span class="sc-pill sp-md">61</span></td>
+          <td><span class="sc-pill sp-lo">38</span></td>
+          <td style="font-family:var(--fm);font-size:11px">5 rails</td>
+          <td><span class="fleet-alert" style="background:rgba(185,28,28,.08);color:var(--red);border:1px solid rgba(185,28,28,.2)">● 3 critical</span></td>
+          <td><span class="fleet-report">Report →</span></td>
+        </tr>
+
+        <!-- Row 2: staging-api -->
+        <tr>
+          <td>
+            <div class="fleet-app">
+              <div class="fleet-app-name">staging-api</div>
+              <div class="fleet-app-meta">llama-3.1-70b-instruct · v1.8.0 · API endpoint</div>
+            </div>
+          </td>
+          <td><span class="fleet-ti" style="color:var(--yellow)">61</span><span style="font-family:var(--fm);font-size:8px;color:var(--txt3)">/100</span></td>
+          <td><span class="tier-badge tier-managed" style="font-size:8.5px">Managed</span></td>
+          <td><span class="sc-pill sp-hi">67</span></td>
+          <td><span class="sc-pill sp-md">58</span></td>
+          <td><span class="sc-pill sp-hi">71</span></td>
+          <td><span class="sc-pill sp-md">55</span></td>
+          <td><span class="sc-pill sp-hi">68</span></td>
+          <td><span class="sc-pill sp-md">49</span></td>
+          <td style="font-family:var(--fm);font-size:11px">3 rails</td>
+          <td><span style="font-family:var(--fm);font-size:10px;color:var(--green)">● Clear</span></td>
+          <td><span class="fleet-report">Report →</span></td>
+        </tr>
+
+        <!-- Row 3: code-assistant -->
+        <tr>
+          <td>
+            <div class="fleet-app">
+              <div class="fleet-app-name">code-assistant</div>
+              <div class="fleet-app-meta">granite-code-8b · v3.0.1 · Agent harness</div>
+            </div>
+          </td>
+          <td><span class="fleet-ti" style="color:var(--yellow)">48</span><span style="font-family:var(--fm);font-size:8px;color:var(--txt3)">/100</span></td>
+          <td><span class="tier-badge tier-managed" style="font-size:8.5px">Managed</span></td>
+          <td><span class="sc-pill sp-md">52</span></td>
+          <td><span class="sc-pill sp-hi">71</span></td>
+          <td><span class="sc-pill sp-lo">34</span></td>
+          <td><span class="sc-pill sp-lo">41</span></td>
+          <td><span class="sc-pill sp-md">58</span></td>
+          <td><span class="sc-pill sp-md">55</span></td>
+          <td style="font-family:var(--fm);font-size:11px">4 rails</td>
+          <td><span class="fleet-alert" style="background:rgba(180,83,9,.08);color:var(--yellow);border:1px solid rgba(180,83,9,.2)">⚠ 1 warning</span></td>
+          <td><span class="fleet-report">Report →</span></td>
+        </tr>
+
+        <!-- Row 4: rag-pipeline -->
+        <tr>
+          <td>
+            <div class="fleet-app">
+              <div class="fleet-app-name">rag-pipeline</div>
+              <div class="fleet-app-meta">mixtral-8x7b · v2.1.0 · RAG pipeline</div>
+            </div>
+          </td>
+          <td><span class="fleet-ti sc-lo-t">35</span><span style="font-family:var(--fm);font-size:8px;color:var(--txt3)">/100</span></td>
+          <td><span class="tier-badge tier-emerging" style="font-size:8.5px">Emerging</span></td>
+          <td><span class="sc-pill sp-cr">28</span></td>
+          <td><span class="sc-pill sp-lo">35</span></td>
+          <td><span class="sc-pill sp-md">61</span></td>
+          <td><span class="sc-pill sp-md">48</span></td>
+          <td><span class="sc-pill sp-lo">44</span></td>
+          <td><span class="sc-pill sp-cr">22</span></td>
+          <td style="font-family:var(--fm);font-size:11px">2 rails</td>
+          <td><span class="fleet-alert" style="background:rgba(185,28,28,.08);color:var(--red);border:1px solid rgba(185,28,28,.2)">● 2 critical</span></td>
+          <td><span class="fleet-report">Report →</span></td>
+        </tr>
+
+        <!-- Row 5: agent-harness (worst) -->
+        <tr>
+          <td>
+            <div class="fleet-app">
+              <div class="fleet-app-name">agent-harness-v2</div>
+              <div class="fleet-app-meta">llama-stack · v0.2.1 · Multi-agent harness</div>
+            </div>
+          </td>
+          <td><span class="fleet-ti sc-cr-t">27</span><span style="font-family:var(--fm);font-size:8px;color:var(--txt3)">/100</span></td>
+          <td><span class="tier-badge" style="background:rgba(185,28,28,.1);color:var(--red);border:1px solid rgba(185,28,28,.25);font-size:8.5px">Minimal</span></td>
+          <td><span class="sc-pill sp-cr">19</span></td>
+          <td><span class="sc-pill sp-cr">22</span></td>
+          <td><span class="sc-pill sp-md">45</span></td>
+          <td><span class="sc-pill sp-cr">31</span></td>
+          <td><span class="sc-pill sp-lo">38</span></td>
+          <td><span class="sc-pill sp-cr">18</span></td>
+          <td style="font-family:var(--fm);font-size:11px">1 rail</td>
+          <td><span class="fleet-alert" style="background:rgba(185,28,28,.08);color:var(--red);border:1px solid rgba(185,28,28,.2)">● 5 critical</span></td>
+          <td><span class="fleet-report">Report →</span></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:10px;font-family:var(--fm);font-size:10px;color:var(--txt3);text-align:center">
+    5 apps · scores computed from last 6h of traced sessions · click any row to open full assessment
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════ OVERVIEW ══ -->
 <div class="view on" id="v-overview">
+
+  <!-- breadcrumb -->
+  <div class="breadcrumb">
+    <span class="breadcrumb-link" onclick="navTo('v-fleet')">← Apps &amp; Guardrails</span>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-cur">production-api · granite-3.1-8b-instruct</span>
+    <span style="margin-left:auto;font-family:var(--fm);font-size:9px;color:var(--txt3)">Scanned 2026-08-14 · ARF v1.0</span>
+  </div>
 
   <!-- ── SCORE HERO ── -->
   <div class="score-hero">
@@ -2162,6 +2414,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
 <!-- stub views -->
 <!-- ══════════════════════════════════════════ PROOF & SOURCES ══ -->
 <div class="view" id="v-session">
+  <div class="breadcrumb">
+    <span class="breadcrumb-link" onclick="navTo('v-fleet')">← Apps &amp; Guardrails</span>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-link" onclick="navTo('v-overview')">production-api</span>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-cur">Proof &amp; Sources</span>
+  </div>
   <div class="ph">
     <h1>Proof &amp; Sources</h1>
     <p>Every session check · evidence type · ATLAS mapping · 23 flagged for review · 2026-08-14</p>
