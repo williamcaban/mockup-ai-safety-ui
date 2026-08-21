@@ -575,16 +575,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
     <div class="score-circle-wrap">
       <div class="score-lbl">TAI Score</div>
       <div style="position:relative;width:120px;height:120px;flex-shrink:0">
-        <svg viewBox="0 0 120 120" width="120" height="120" style="display:block">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="10"/>
-          <circle cx="60" cy="60" r="52" fill="none" stroke="#ff6640" stroke-width="10"
-            stroke-dasharray="196 131" stroke-dashoffset="0"
+        <svg viewBox="0 0 120 120" width="120" height="120" style="display:block;position:absolute;inset:0">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="8"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#ff6640" stroke-width="8"
+            stroke-dasharray="188 126" stroke-dashoffset="0"
             stroke-linecap="round" transform="rotate(-90 60 60)"/>
         </svg>
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px">
-          <span style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:#ffffff;line-height:1">42</span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.55)">/100</span>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+          <span style="font-family:'Syne',sans-serif;font-size:30px;font-weight:700;color:#fff;line-height:1">42</span>
         </div>
+        <div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.45)">/ 100</div>
       </div>
       <span class="tier-badge tier-emerging">Emerging</span>
     </div>
@@ -2265,15 +2265,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
     <div class="score-circle-wrap">
       <div class="score-lbl">Bias Score</div>
       <div style="position:relative;width:120px;height:120px;flex-shrink:0">
-        <svg viewBox="0 0 120 120" width="120" height="120" style="display:block">
-          <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="10"/>
-          <circle cx="60" cy="60" r="52" fill="none" stroke="#fbbf24" stroke-width="10"
-            stroke-dasharray="204 123" stroke-dashoffset="0" stroke-linecap="round" transform="rotate(-90 60 60)"/>
+        <svg viewBox="0 0 120 120" width="120" height="120" style="display:block;position:absolute;inset:0">
+          <circle cx="60" cy="60" r="50" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="8"/>
+          <circle cx="60" cy="60" r="50" fill="none" stroke="#fbbf24" stroke-width="8"
+            stroke-dasharray="204 110" stroke-dashoffset="0"
+            stroke-linecap="round" transform="rotate(-90 60 60)"/>
         </svg>
-        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px">
-          <span style="font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:#ffffff;line-height:1">52</span>
-          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,.55)">/100</span>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+          <span style="font-family:'Syne',sans-serif;font-size:30px;font-weight:700;color:#fff;line-height:1">52</span>
         </div>
+        <div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.45)">/ 100</div>
       </div>
       <span class="tier-badge tier-managed">Partial</span>
     </div>
