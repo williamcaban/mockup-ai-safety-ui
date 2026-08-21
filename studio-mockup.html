@@ -1942,11 +1942,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;heigh
           <option value="general">General</option>
         </select>
       </div>
-      <div class="wr"><span class="wl">Safety</span><input type="range" id="w-safety" min="0" max="100" value="35" oninput="updateW()"><span class="wv" id="v-safety-w">35%</span></div>
-      <div class="wr"><span class="wl">Accuracy</span><input type="range" id="w-accuracy" min="0" max="100" value="30" oninput="updateW()"><span class="wv" id="v-accuracy-w">30%</span></div>
-      <div class="wr"><span class="wl">Latency</span><input type="range" id="w-latency" min="0" max="100" value="20" oninput="updateW()"><span class="wv" id="v-latency-w">20%</span></div>
-      <div class="wr"><span class="wl">Fairness</span><input type="range" id="w-fairness" min="0" max="100" value="10" oninput="updateW()"><span class="wv" id="v-fairness-w">10%</span></div>
-      <div class="wr"><span class="wl">Cost</span><input type="range" id="w-cost" min="0" max="100" value="5" oninput="updateW()"><span class="wv" id="v-cost-w">5%</span></div>
+      <div class="wr"><span class="wl">Safety</span><input type="range" id="w-safety" min="0" max="100" value="35" oninput="updateW('safety')"><span class="wv" id="v-safety-w">35%</span></div>
+      <div class="wr"><span class="wl">Accuracy</span><input type="range" id="w-accuracy" min="0" max="100" value="30" oninput="updateW('accuracy')"><span class="wv" id="v-accuracy-w">30%</span></div>
+      <div class="wr"><span class="wl">Latency</span><input type="range" id="w-latency" min="0" max="100" value="20" oninput="updateW('latency')"><span class="wv" id="v-latency-w">20%</span></div>
+      <div class="wr"><span class="wl">Fairness</span><input type="range" id="w-fairness" min="0" max="100" value="10" oninput="updateW('fairness')"><span class="wv" id="v-fairness-w">10%</span></div>
+      <div class="wr"><span class="wl">Cost</span><input type="range" id="w-cost" min="0" max="100" value="5" oninput="updateW('cost')"><span class="wv" id="v-cost-w">5%</span></div>
       <div id="w-total-bar" style="margin-top:8px;padding:6px 8px;border-radius:4px;font-family:var(--fm);font-size:10px;text-align:center;background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.2);color:var(--green)">Total: 100% ✓</div>
     </div>
 
@@ -3360,26 +3360,49 @@ function runCycle() {
   }
 }
 
-function updateW() {
+function updateW(changedId) {
   const ids = ['safety','accuracy','latency','fairness','cost'];
-  let total = 0;
-  ids.forEach(id => {
-    const val = parseInt(document.getElementById('w-'+id).value);
-    document.getElementById('v-'+id+'-w').textContent = val+'%';
-    total += val;
-  });
-  const bar = document.getElementById('w-total-bar');
-  if (Math.abs(total - 100) < 5) {
-    bar.style.background = 'rgba(52,211,153,.1)';
-    bar.style.borderColor = 'rgba(52,211,153,.2)';
-    bar.style.color = 'var(--green)';
-    bar.textContent = 'Total: ' + total + '% ✓';
+  const changedEl = document.getElementById('w-' + changedId);
+  const changedVal = Math.max(0, Math.min(100, parseInt(changedEl.value)));
+  changedEl.value = changedVal;
+
+  const others = ids.filter(id => id !== changedId);
+  const othersTotal = others.reduce((s, id) => s + parseInt(document.getElementById('w-' + id).value), 0);
+  const targetOthers = 100 - changedVal;
+
+  if (othersTotal > 0) {
+    // Scale others proportionally; last slider absorbs rounding remainder
+    let distributed = 0;
+    others.forEach((id, i) => {
+      const el = document.getElementById('w-' + id);
+      if (i === others.length - 1) {
+        el.value = Math.max(0, targetOthers - distributed);
+      } else {
+        const newVal = Math.max(0, Math.round(parseInt(el.value) * targetOthers / othersTotal));
+        el.value = newVal;
+        distributed += newVal;
+      }
+    });
   } else {
-    bar.style.background = 'rgba(251,191,36,.1)';
-    bar.style.borderColor = 'rgba(251,191,36,.2)';
-    bar.style.color = 'var(--yellow)';
-    bar.textContent = 'Total: ' + total + '% (adjust to reach 100%)';
+    // All others were 0 — divide targetOthers evenly
+    const base = Math.floor(targetOthers / others.length);
+    const rem  = targetOthers - base * others.length;
+    others.forEach((id, i) => {
+      document.getElementById('w-' + id).value = base + (i === 0 ? rem : 0);
+    });
   }
+
+  // Refresh all labels
+  ids.forEach(id => {
+    document.getElementById('v-' + id + '-w').textContent =
+      parseInt(document.getElementById('w-' + id).value) + '%';
+  });
+
+  const bar = document.getElementById('w-total-bar');
+  bar.style.background = 'rgba(52,211,153,.1)';
+  bar.style.borderColor = 'rgba(52,211,153,.2)';
+  bar.style.color = 'var(--green)';
+  bar.textContent = 'Total: 100% ✓';
   document.getElementById('preset-sel').value = '';
 }
 
