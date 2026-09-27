@@ -1,0 +1,185 @@
+.studio-inventory-application {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.studio-inventory-app-link {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.studio-inventory-app-link .pf-v6-c-button__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studio-inventory-info-button {
+  flex: 0 0 auto;
+}
+
+.studio-inventory-environment {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.studio-environment-icon {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  color: var(--pf-t--global--text--color--regular, #151515);
+  cursor: help;
+  font-size: 1rem;
+}
+
+.studio-environment-icon:focus-visible {
+  outline: 2px solid var(--pf-t--global--color--brand--default, #0066cc);
+  outline-offset: 2px;
+}
+
+.studio-outcome-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-outcome-pill-trigger {
+  display: inline-flex;
+  border-radius: 3px;
+  cursor: help;
+}
+
+.studio-outcome-pill-trigger:focus-visible {
+  outline: 2px solid var(--pf-t--global--color--brand--default, #0066cc);
+  outline-offset: 2px;
+}
+
+.studio-outcome-tooltip {
+  min-width: 190px;
+}
+
+.studio-outcome-tooltip-heading {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: var(--pf-t--global--text--color--regular, #151515);
+  font-weight: 600;
+}
+
+.studio-outcome-tooltip ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.studio-outcome-tooltip li {
+  display: grid;
+  grid-template-columns: 0.65rem 1fr auto;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.studio-outcome-swatch {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 2px;
+}
+
+.studio-outcome-swatch-passed {
+  background: var(--pf-t--global--color--nonstatus--green--100, #e6f4e6);
+}
+
+.studio-outcome-swatch-blocked {
+  background: var(--pf-t--global--color--nonstatus--red--100, #faeae8);
+}
+
+.studio-outcome-swatch-mutated {
+  background: var(--pf-t--global--color--nonstatus--yellow--100, #fff4cc);
+}
+
+.studio-outcome-tooltip .studio-outcome-total {
+  grid-template-columns: 1fr auto;
+  padding-top: 0.35rem;
+  border-top: 1px solid #d2d2d2;
+  font-weight: 600;
+}
+
+.studio-inventory-empty {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.studio-dashboard-footnote {
+  display: block;
+  margin-top: 0.4rem;
+}
+
+.studio-request-outcomes-card {
+  margin-bottom: 1rem;
+}
+
+.studio-request-outcomes-card .studio-metric-grid {
+  margin-bottom: 0;
+}
+
+.studio-metric-label {
+  display: block;
+  margin-bottom: 0.55rem;
+  color: var(--studio-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.studio-metric-value {
+  margin-bottom: 0.3rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.metric-danger {
+  color: #b1380b;
+}
+
+.metric-warning {
+  color: #795600;
+}
+
+.metric-success {
+  color: #1e4f18;
+}
+
+.metric-info {
+  color: #0066cc;
+  font-size: 1.35rem;
+}
+
+.studio-metric-value--large {
+  font-size: 2.5rem;
+  line-height: 1.1;
+}
+
+.studio-muted,
+.studio-table-detail {
+  color: var(--studio-muted);
+}

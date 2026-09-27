@@ -1,0 +1,72 @@
+.studio-content > .pf-v6-c-breadcrumb {
+  margin-bottom: 0.6rem;
+}
+
+.pf-v6-c-card {
+  height: 100%;
+}
+
+@media (max-width: 768px) {
+  .studio-workspace-select-toggle {
+    width: 14rem;
+  }
+
+  .studio-active-application-select {
+    width: 100%;
+  }
+
+  .studio-page-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .studio-title-actions {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .studio-catalog-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .studio-catalog-actions {
+    margin: 0.5rem 0 0.75rem;
+  }
+
+  .studio-guardrail-create-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-guardrail-create-tile {
+    min-height: 0;
+  }
+
+  .studio-guardrail-generation-status {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 1rem 0;
+  }
+
+  .studio-config-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .studio-config-editor-row,
+  .studio-config-rail-row,
+  .studio-config-prompt-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-signal-list li {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .studio-signal-list time {
+    margin-left: auto;
+  }
+
+}

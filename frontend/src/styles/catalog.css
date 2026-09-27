@@ -1,0 +1,41 @@
+.studio-section-heading {
+  margin: 1.4rem 0 0.8rem;
+}
+
+.studio-section-heading .pf-v6-c-content p {
+  margin-top: 0.3rem;
+  color: var(--studio-muted);
+}
+
+.studio-catalog-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.studio-catalog-heading .studio-section-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.studio-catalog-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.studio-package-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.studio-catalog-description {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--studio-muted);
+}

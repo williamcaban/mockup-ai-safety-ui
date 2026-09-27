@@ -1,0 +1,137 @@
+:root {
+  color-scheme: light;
+  --studio-red: #ee0000;
+  --studio-ink: #151515;
+  --studio-muted: #6a6e73;
+  --studio-surface: #f5f5f5;
+}
+
+html,
+body,
+#root {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--studio-surface);
+}
+
+.studio-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  color: var(--studio-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.studio-brand-mark {
+  display: inline-flex;
+  width: 1.8rem;
+  height: 1.8rem;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--studio-red);
+  font-size: 1.2rem;
+}
+
+.studio-workspace-select-toggle {
+  width: 18rem;
+  max-width: 100%;
+}
+
+.studio-active-application-select {
+  width: 16rem;
+  max-width: 100%;
+}
+
+.studio-page-section {
+  background: var(--studio-surface);
+}
+
+.studio-content {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+.studio-page-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 1.25rem 0;
+}
+
+.studio-page-title .pf-v6-c-content p {
+  margin-top: 0.25rem;
+  color: var(--studio-muted);
+}
+
+.studio-title-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.studio-prototype-alert,
+.studio-feedback-alert {
+  margin-bottom: 1rem;
+}
+
+.studio-metric-grid,
+.studio-card-grid {
+  padding: 0;
+  margin: 0 0 1rem;
+  list-style: none;
+}
+
+.studio-metric-card {
+  min-height: 120px;
+}
+
+.studio-evaluation-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.studio-evaluation-score-value {
+  color: var(--studio-ink);
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.studio-evaluation-score-label {
+  color: var(--studio-muted);
+  font-size: 0.875rem;
+}
+
+.studio-status-label.pf-m-success {
+  --pf-v6-c-label--BackgroundColor: var(--pf-t--global--color--nonstatus--green--100, #e6f4e6);
+  --pf-v6-c-label--Color: var(--pf-t--global--text--color--regular, #151515);
+  --pf-v6-c-label__icon--Color: var(--pf-t--global--text--color--regular, #151515);
+}
+
+.studio-status-label.pf-m-warning {
+  --pf-v6-c-label--BackgroundColor: var(--pf-t--global--color--nonstatus--yellow--100, #fff4cc);
+  --pf-v6-c-label--Color: var(--pf-t--global--text--color--regular, #151515);
+  --pf-v6-c-label__icon--Color: var(--pf-t--global--text--color--regular, #151515);
+}
+
+.studio-status-label.pf-m-danger {
+  --pf-v6-c-label--BackgroundColor: var(--pf-t--global--color--nonstatus--red--100, #faeae8);
+  --pf-v6-c-label--Color: var(--pf-t--global--text--color--regular, #151515);
+  --pf-v6-c-label__icon--Color: var(--pf-t--global--text--color--regular, #151515);
+}
+
+.studio-status-label.pf-m-info {
+  --pf-v6-c-label--BackgroundColor: var(--pf-t--global--color--nonstatus--blue--100, #e7f1fa);
+  --pf-v6-c-label--Color: var(--pf-t--global--text--color--regular, #151515);
+  --pf-v6-c-label__icon--Color: var(--pf-t--global--text--color--regular, #151515);
+}
