@@ -374,6 +374,163 @@ body {
   padding-top: 1rem;
 }
 
+.studio-guardrail-create-landing > p {
+  margin-top: 0;
+}
+
+.studio-guardrail-create-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.studio-guardrail-create-tile {
+  display: flex;
+  min-height: 12rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 1.25rem;
+  border: 1px solid var(--pf-t--global--border--color--default, #d2d2d2);
+  border-radius: 6px;
+  background: var(--pf-t--global--background--color--primary--default, #fff);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease;
+}
+
+.studio-guardrail-create-tile:hover {
+  border-color: var(--pf-t--global--color--brand--default, #0066cc);
+  background: var(--pf-t--global--background--color--secondary--default, #f5f5f5);
+  box-shadow: 0 0 0 1px var(--pf-t--global--color--brand--default, #0066cc);
+}
+
+.studio-guardrail-create-tile:focus-visible {
+  outline: 3px solid var(--pf-t--global--color--brand--default, #0066cc);
+  outline-offset: 2px;
+}
+
+.studio-guardrail-create-tile-icon {
+  color: var(--pf-t--global--color--brand--default, #0066cc);
+  font-size: 1.5rem;
+}
+
+.studio-guardrail-create-tile strong {
+  font-size: 1rem;
+}
+
+.studio-guardrail-create-tile > span:last-child {
+  color: var(--studio-muted);
+  line-height: 1.45;
+}
+
+.studio-auto-generate-risks {
+  margin-top: 0.25rem;
+}
+
+.studio-auto-generate-risk-search {
+  width: 24rem;
+  max-width: 100%;
+}
+
+.studio-auto-generate-risk-list {
+  max-height: 25rem;
+  overflow-y: auto;
+  border: 1px solid var(--pf-t--global--border--color--default, #d2d2d2);
+  border-radius: 4px;
+}
+
+.studio-auto-generate-risk-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--pf-t--global--border--color--default, #d2d2d2);
+}
+
+.studio-auto-generate-risk-option:last-child {
+  border-bottom: 0;
+}
+
+.studio-auto-generate-risk-option > .pf-v6-c-check {
+  padding-top: 0.15rem;
+}
+
+.studio-auto-generate-risk-option > label {
+  cursor: pointer;
+}
+
+.studio-auto-generate-risk-option > label > small {
+  display: block;
+  margin-top: 0.2rem;
+}
+
+.studio-auto-generate-risk-empty {
+  padding: 1.25rem;
+  color: var(--studio-muted);
+}
+
+.studio-auto-generate-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.studio-guardrail-generation-status {
+  display: flex;
+  min-height: 15rem;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2rem;
+}
+
+.studio-guardrail-generation-status .pf-v6-c-spinner {
+  flex: 0 0 auto;
+}
+
+.studio-generated-guardrail-summary {
+  margin-top: 1rem;
+}
+
+.studio-generated-guardrail-summary > p {
+  margin: 0.35rem 0;
+}
+
+.studio-generated-risk-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.studio-guardrail-lifecycle-editor {
+  margin-top: 1rem;
+}
+
+.studio-guardrail-lifecycle-editor .pf-v6-c-form__group {
+  margin: 0;
+  max-width: 24rem;
+}
+
+.studio-guardrail-delete-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.studio-guardrail-delete-confirm-actions {
+  margin-top: 0.75rem;
+}
+
 .studio-config-editor-section > .pf-v6-c-form__group {
   margin-top: 0.8rem;
 }
@@ -469,10 +626,6 @@ body {
   overflow: auto;
   tab-size: 2;
   white-space: pre;
-}
-
-.studio-guardrail-editor-tabs {
-  margin-top: 0.75rem;
 }
 
 .studio-derived-enforcement-points {
@@ -1054,6 +1207,20 @@ body {
 
   .studio-catalog-actions {
     margin: 0.5rem 0 0.75rem;
+  }
+
+  .studio-guardrail-create-tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .studio-guardrail-create-tile {
+    min-height: 0;
+  }
+
+  .studio-guardrail-generation-status {
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 1rem 0;
   }
 
   .studio-config-section-heading {

@@ -37,9 +37,7 @@ import {
   NavItem,
   Pagination,
   SearchInput,
-  Tab,
-  TabTitleText,
-  Tabs,
+  Spinner,
   Page,
   PageSection,
   PageSidebar,
@@ -145,7 +143,7 @@ type CatalogDefinition = {
   models: GuardrailModelConfig[];
   rails: GuardrailRailConfig[];
   prompts: GuardrailPromptConfig[];
-  lifecycle: 'Published' | 'Draft';
+  lifecycle: 'Published' | 'Draft' | 'Retired';
   version: string;
   evaluationCoverage: number;
   config?: YamlConfig;
@@ -164,6 +162,8 @@ type GuardrailEditorDraft = {
   config: YamlConfig;
 };
 type GuardrailEditorMode = 'upload' | 'yaml';
+type GuardrailCreationStage = 'landing' | 'risks' | 'generating' | 'generated' | 'editor';
+type GuardrailCreationPath = 'auto' | 'yaml' | 'upload' | null;
 
 const defaultGuardrailYaml = [
   '# 1. MULTIPLE MODELS CONFIGURATION WITH BASE URLs & KEYS',
@@ -778,6 +778,61 @@ const policyMappingRecords = [
     policyIds: ['policy-responsible-ai', 'policy-iso-42001', 'policy-eu-ai-act'],
   },
 ];
+
+function createRecommendedGuardrailConfig(risks: Array<(typeof policyMappingRecords)[number]>): YamlConfig {
+  const riskNames = risks.map(({ risk }) => risk.toLowerCase());
+  const inputFlows = new Set(['self check input']);
+  const outputFlows = new Set<string>();
+  const actionFlows = new Set<string>();
+
+  if (riskNames.some((risk) => /injection|harmful|policy evasion|bypass/.test(risk))) {
+    inputFlows.add('user jailbreak check');
+  }
+  if (riskNames.some((risk) => /data|privacy|personal|credential|disclosure|fabricated|harmful|unfair|bias/.test(risk))) {
+    outputFlows.add('self check output');
+  }
+  if (riskNames.some((risk) => /tool|autonomy|authorization|supply chain/.test(risk))) {
+    actionFlows.add('tool authorization check');
+  }
+
+  const rails: YamlConfig = {
+    input: { flows: Array.from(inputFlows) },
+  };
+  if (outputFlows.size > 0) rails.output = { flows: Array.from(outputFlows) };
+  if (actionFlows.size > 0) rails.actions = { flows: Array.from(actionFlows) };
+
+  const riskList = risks.map(({ clause, risk }) => `- ${risk} (${clause})`).join('\n');
+  const prompts: YamlValue[] = [{
+    task: 'self_check_input',
+    content: `Check each request against the selected policy risks.\n\nSelected risks:\n${riskList}\n\nBlock requests that materially increase these risks. Return only "yes" or "no".`,
+  }];
+  if (outputFlows.size > 0) {
+    prompts.push({
+      task: 'self_check_output',
+      content: `Check each response against the selected policy risks.\n\nSelected risks:\n${riskList}\n\nBlock or redact responses that materially increase these risks. Return only "yes" or "no".`,
+    });
+  }
+  const models: YamlValue[] = [{
+    type: 'self_check_input',
+    engine: 'openai',
+    model: 'nvidia/Nemotron-3.5-Content-Safety',
+    parameters: { temperature: 0.0 },
+  }];
+  if (outputFlows.size > 0) {
+    models.push({
+      type: 'self_check_output',
+      engine: 'openai',
+      model: 'nvidia/Nemotron-3.5-Content-Safety',
+      parameters: { temperature: 0.0 },
+    });
+  }
+
+  return {
+    models,
+    rails,
+    prompts,
+  };
+}
 
 const guardrails = [
   {
@@ -3157,14 +3212,24 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
   const [definitions, setDefinitions] = useState(catalogDefinitions);
   const [catalogQuery, setCatalogQuery] = useState('');
   const [catalogEnforcementFilter, setCatalogEnforcementFilter] = useState('all');
-  const [catalogLifecycleFilter, setCatalogLifecycleFilter] = useState<'all' | 'Published' | 'Draft'>('all');
+  const [catalogLifecycleFilter, setCatalogLifecycleFilter] = useState<'all' | 'Published' | 'Draft' | 'Retired'>('all');
   const [catalogCoverageFilter, setCatalogCoverageFilter] = useState<'all' | 'none' | 'low' | 'medium' | 'high'>('all');
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogPerPage, setCatalogPerPage] = useState(10);
   const [createOpen, setCreateOpen] = useState(false);
+  const [creationStage, setCreationStage] = useState<GuardrailCreationStage>('landing');
+  const [creationPath, setCreationPath] = useState<GuardrailCreationPath>(null);
+  const [selectedRiskClauses, setSelectedRiskClauses] = useState<string[]>([]);
+  const [riskSearchQuery, setRiskSearchQuery] = useState('');
+  const [riskPage, setRiskPage] = useState(1);
+  const [riskPerPage, setRiskPerPage] = useState(10);
   const [editingDefinitionId, setEditingDefinitionId] = useState<string | null>(null);
+  const [editingLifecycle, setEditingLifecycle] = useState<CatalogDefinition['lifecycle']>('Draft');
+  const [editingLifecycleAtOpen, setEditingLifecycleAtOpen] = useState<CatalogDefinition['lifecycle']>('Draft');
+  const [confirmDeleteGuardrail, setConfirmDeleteGuardrail] = useState(false);
   const [draft, setDraft] = useState<GuardrailEditorDraft>(emptyGuardrailDraft());
   const [savedGuardrail, setSavedGuardrail] = useState('');
+  const [deletedGuardrailName, setDeletedGuardrailName] = useState('');
   const [evaluationRequest, setEvaluationRequest] = useState('');
   const [yamlUploadStatus, setYamlUploadStatus] = useState('');
   const [yamlUploadError, setYamlUploadError] = useState('');
@@ -3175,6 +3240,11 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
   const [appliedYamlText, setAppliedYamlText] = useState('');
   const [yamlEditorError, setYamlEditorError] = useState('');
   const [yamlEditorStatus, setYamlEditorStatus] = useState('');
+  useEffect(() => {
+    if (creationStage !== 'generating') return undefined;
+    const generationTimer = window.setTimeout(() => setCreationStage('generated'), 2400);
+    return () => window.clearTimeout(generationTimer);
+  }, [creationStage]);
   const enforcementPointOptions = Array.from(new Set(definitions.flatMap((definition) => definition.rails.map((rail) => rail.category))))
     .sort((left, right) => enforcementPointLabel(left).localeCompare(enforcementPointLabel(right)));
   const filteredDefinitions = definitions.filter((definition) => {
@@ -3213,31 +3283,20 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
     setCatalogCoverageFilter('all');
     setCatalogPage(1);
   };
-  const openCreateEditor = (startWithUpload = false) => {
+  const openCreateEditor = () => {
     const initialDraft = emptyGuardrailDraft();
     const initialYaml = defaultGuardrailYaml;
     setEditingDefinitionId(null);
+    setEditingLifecycle('Draft');
+    setEditingLifecycleAtOpen('Draft');
+    setConfirmDeleteGuardrail(false);
+    setCreationStage('landing');
+    setCreationPath(null);
+    setSelectedRiskClauses([]);
+    setRiskSearchQuery('');
+    setRiskPage(1);
     setDraft(initialDraft);
-    setYamlUploadStatus(startWithUpload ? 'Choose a config.yml file to start a guardrail draft.' : '');
-    setYamlUploadError('');
-    setYamlUploadFile(null);
-    setIsReadingYaml(false);
-    setEditorMode(startWithUpload ? 'upload' : 'yaml');
-    setYamlEditorText(initialYaml);
-    setAppliedYamlText(initialYaml);
-    setYamlEditorError('');
-    setYamlEditorStatus('');
-    setCreateOpen(true);
-  };
-  const openEditEditor = (definition: CatalogDefinition) => {
-    const config = definitionToYamlConfig(definition);
-    const initialYaml = definition.configYaml ?? stringifyYaml(config, { lineWidth: 0 });
-    setEditingDefinitionId(definition.id);
-    setDraft({
-      name: definition.name,
-      description: definition.description,
-      config,
-    });
+    setDeletedGuardrailName('');
     setYamlUploadStatus('');
     setYamlUploadError('');
     setYamlUploadFile(null);
@@ -3248,6 +3307,91 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
     setYamlEditorError('');
     setYamlEditorStatus('');
     setCreateOpen(true);
+  };
+  const openEditEditor = (definition: CatalogDefinition) => {
+    const config = definitionToYamlConfig(definition);
+    const initialYaml = definition.configYaml ?? stringifyYaml(config, { lineWidth: 0 });
+    setEditingDefinitionId(definition.id);
+    setEditingLifecycle(definition.lifecycle);
+    setEditingLifecycleAtOpen(definition.lifecycle);
+    setConfirmDeleteGuardrail(false);
+    setDeletedGuardrailName('');
+    setDraft({
+      name: definition.name,
+      description: definition.description,
+      config,
+    });
+    setCreationStage('editor');
+    setCreationPath('yaml');
+    setSelectedRiskClauses([]);
+    setYamlUploadStatus('');
+    setYamlUploadError('');
+    setYamlUploadFile(null);
+    setIsReadingYaml(false);
+    setEditorMode('yaml');
+    setYamlEditorText(initialYaml);
+    setAppliedYamlText(initialYaml);
+    setYamlEditorError('');
+    setYamlEditorStatus('');
+    setCreateOpen(true);
+  };
+  const chooseCreationPath = (path: Exclude<GuardrailCreationPath, null>) => {
+    setCreationPath(path);
+    if (path === 'auto') {
+      setCreationStage('risks');
+      return;
+    }
+    setEditorMode(path);
+    setCreationStage('editor');
+  };
+  const startGuardrailGeneration = () => {
+    const selectedRisks = policyMappingRecords.filter((item) => selectedRiskClauses.includes(item.clause));
+    if (selectedRisks.length === 0) return;
+
+    const config = createRecommendedGuardrailConfig(selectedRisks);
+    const initialYaml = stringifyYaml(config, { lineWidth: 0 });
+    const generatedName = selectedRisks.length === 1
+      ? `${selectedRisks[0].risk} guardrail`
+      : `Policy risk guardrails (${selectedRisks.length} risks)`;
+    setDraft({
+      name: generatedName,
+      description: `Recommended controls generated for ${selectedRisks.map(({ risk }) => risk).join(', ')}.`,
+      config,
+    });
+    setYamlEditorText(initialYaml);
+    setAppliedYamlText(initialYaml);
+    setYamlEditorError('');
+    setYamlEditorStatus('');
+    setEditorMode('yaml');
+    setCreationStage('generating');
+  };
+  const openYamlEditor = () => {
+    setEditorMode('yaml');
+    setYamlEditorError('');
+    setYamlEditorStatus('');
+    setCreationStage('editor');
+  };
+  const toggleSelectedRisk = (clause: string, checked: boolean) => {
+    setSelectedRiskClauses((current) => checked
+      ? [...current, clause]
+      : current.filter((selectedClause) => selectedClause !== clause));
+  };
+  const backFromEditor = () => {
+    setCreationStage(creationPath === 'auto' ? 'generated' : 'landing');
+  };
+  const deleteRetiredGuardrail = () => {
+    if (!editingDefinitionId || editingLifecycleAtOpen !== 'Retired') return;
+    const sourceDefinition = definitions.find((definition) => definition.id === editingDefinitionId);
+    if (!sourceDefinition || sourceDefinition.lifecycle !== 'Retired') return;
+    setDefinitions((current) => current.filter((definition) => definition.id !== editingDefinitionId));
+    setCatalogPage(1);
+    setSavedGuardrail('');
+    setDeletedGuardrailName(sourceDefinition.name);
+    setCreateOpen(false);
+    setEditingDefinitionId(null);
+    setEditingLifecycle('Draft');
+    setEditingLifecycleAtOpen('Draft');
+    setConfirmDeleteGuardrail(false);
   };
   const handleYamlUpload = async (file: File) => {
     setYamlUploadFile(file);
@@ -3273,13 +3417,13 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
       setIsReadingYaml(false);
     }
   };
-  const applyInlineYaml = () => {
+  const parseInlineYaml = () => {
     try {
       const parsed = parseGuardrailConfigYaml(yamlEditorText);
       setDraft((current) => ({ ...current, config: parsed }));
       setAppliedYamlText(yamlEditorText);
       setYamlEditorError('');
-      setYamlEditorStatus('Configuration applied to this draft.');
+      setYamlEditorStatus('YAML validated.');
       return parsed;
     } catch (error) {
       setYamlEditorError(error instanceof Error ? error.message : 'The YAML could not be parsed.');
@@ -3304,11 +3448,6 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
   };
   const handleYamlEditorKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const editor = event.currentTarget;
-    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-      event.preventDefault();
-      if (yamlEditorIsValid) applyInlineYaml();
-      return;
-    }
     if (event.key !== 'Tab') return;
 
     event.preventDefault();
@@ -3333,33 +3472,20 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
     setYamlEditorStatus('');
     requestAnimationFrame(() => editor.setSelectionRange(nextSelectionStart, nextSelectionEnd));
   };
-  const selectEditorMode = (_event: React.MouseEvent<HTMLElement>, eventKey: string | number) => {
-    const nextMode = String(eventKey) as GuardrailEditorMode;
-    if (editorMode === 'yaml' && nextMode !== 'yaml') {
-      const parsed = applyInlineYaml();
-      if (!parsed) return;
-    }
-    if (nextMode === 'yaml') {
-      setYamlEditorError('');
-      setYamlEditorStatus('');
-    }
-    setEditorMode(nextMode);
-  };
   const saveGuardrail = () => {
     const name = draft.name.trim();
     if (!name || !isValidYamlValue(draft.config)) return;
-    const config = editorMode === 'yaml' ? applyInlineYaml() : draft.config;
+    const config = editorMode === 'yaml' ? parseInlineYaml() : draft.config;
     if (!config) return;
 
     const sourceDefinition = definitions.find((definition) => definition.id === editingDefinitionId);
-    const editingPublished = sourceDefinition?.lifecycle === 'Published';
     const summary = configToCatalogSummary(config);
     const definition: CatalogDefinition = {
-      id: editingDefinitionId && !editingPublished ? editingDefinitionId : `draft-${Date.now()}`,
+      id: editingDefinitionId ?? `draft-${Date.now()}`,
       name,
       description: draft.description.trim() || 'No description provided.',
       ...summary,
-      lifecycle: 'Draft',
+      lifecycle: editingDefinitionId ? editingLifecycle : 'Draft',
       version: sourceDefinition ? nextDraftVersion(sourceDefinition.version) : 'v0.1',
       evaluationCoverage: 0,
       config: JSON.parse(JSON.stringify(config)) as YamlConfig,
@@ -3367,7 +3493,7 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
     };
 
     setDefinitions((current) => {
-      if (editingDefinitionId && !editingPublished) {
+      if (editingDefinitionId) {
         return current.map((item) => item.id === editingDefinitionId ? definition : item);
       }
       return [definition, ...current];
@@ -3376,6 +3502,9 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
     setCatalogPage(1);
     setSavedGuardrail(name);
     setCreateOpen(false);
+    setCreationStage('landing');
+    setCreationPath(null);
+    setSelectedRiskClauses([]);
     setDraft(emptyGuardrailDraft());
     setEditingDefinitionId(null);
     setYamlUploadStatus('');
@@ -3387,6 +3516,11 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
   };
   const closeGuardrailEditor = () => {
     setCreateOpen(false);
+    setCreationStage('landing');
+    setCreationPath(null);
+    setSelectedRiskClauses([]);
+    setRiskSearchQuery('');
+    setRiskPage(1);
   };
   const draftIsValid = Boolean(draft.name.trim()) && isValidYamlValue(draft.config);
   let yamlEditorProblem = yamlEditorError;
@@ -3397,19 +3531,79 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
   }
   const yamlEditorIsValid = !yamlEditorProblem;
   const yamlEditorLineCount = yamlEditorText.split(/\r\n|\r|\n/).length;
+  const selectedRiskRecords = policyMappingRecords.filter((item) => selectedRiskClauses.includes(item.clause));
+  const filteredPolicyRisks = policyMappingRecords.filter((item) =>
+    `${item.risk} ${item.clause} ${item.requirement}`.toLowerCase().includes(riskSearchQuery.trim().toLowerCase()),
+  );
+  const visiblePolicyRisks = filteredPolicyRisks.slice((riskPage - 1) * riskPerPage, riskPage * riskPerPage);
+  const policyRiskPageCount = Math.ceil(filteredPolicyRisks.length / riskPerPage);
+  const policyRiskPageLabel = policyRiskPageCount > 0 ? `Page ${riskPage} of ${policyRiskPageCount}` : '0 pages';
+  const policyRiskPaginationTitles = {
+    items: 'policy risks',
+    paginationAriaLabel: 'Policy risk selection pagination',
+    optionsToggleAriaLabel: 'Policy risks per page',
+  };
+  const onSetRiskPage = (_event: React.MouseEvent | React.KeyboardEvent | MouseEvent, nextPage: number) => setRiskPage(nextPage);
+  const onSetRiskPerPage = (
+    _event: React.MouseEvent | React.KeyboardEvent | MouseEvent,
+    nextPerPage: number,
+    nextPage: number,
+  ) => {
+    setRiskPerPage(nextPerPage);
+    setRiskPage(nextPage);
+  };
+  const canSaveGuardrail = draftIsValid && (editorMode === 'yaml'
+    ? yamlEditorIsValid
+    : Boolean(yamlUploadFile && yamlUploadStatus && !yamlUploadError && !isReadingYaml));
+  const currentEditingDefinition = definitions.find((definition) => definition.id === editingDefinitionId);
+  const canDeleteRetiredGuardrail = editingLifecycleAtOpen === 'Retired'
+    && currentEditingDefinition?.lifecycle === 'Retired'
+    && editingLifecycle === 'Retired';
+  const createModalTitle = editingDefinitionId
+    ? 'Edit guardrail definition'
+    : creationStage === 'landing'
+      ? 'Add guardrail'
+      : creationStage === 'risks'
+        ? 'Auto-generate guardrail'
+        : creationStage === 'generating'
+          ? 'Generating guardrail'
+          : creationStage === 'generated'
+            ? 'Review generated guardrail'
+            : editorMode === 'upload'
+              ? 'Import config.yml'
+              : creationPath === 'auto'
+                ? 'View/edit generated guardrail'
+                : 'Inline YAML edit';
+  const createModalDescription = editingDefinitionId
+    ? 'Edit the config.yml inline. Saving a published version creates a new draft version.'
+    : creationStage === 'landing'
+      ? 'Choose a way to create a guardrail definition.'
+      : creationStage === 'risks'
+        ? 'Choose the risks from Policy mapping review that this guardrail should mitigate.'
+        : creationStage === 'generating'
+          ? 'Building a recommended NeMo Guardrails configuration from the selected policy risks.'
+          : creationStage === 'generated'
+            ? 'Review the generated recommendation, then save it as a draft or open the YAML editor.'
+            : editorMode === 'upload'
+              ? 'Upload or drop a config.yml file to create a guardrail draft.'
+              : 'Edit the complete config.yml directly. YAML is checked as you type.';
 
   return (
     <>
       <div className="studio-catalog-heading">
-        <SectionHeading title="Guardrails catalog" description="Search and compare guardrail definitions and their evaluation coverage. Published versions are immutable; context-specific changes require new evidence." />
+        <SectionHeading title="Guardrails catalog" description="Search and compare guardrail definitions and evaluation coverage. Edit configuration and lifecycle from each definition." />
         <div className="studio-catalog-actions">
-          <Button variant="secondary" onClick={() => openCreateEditor(true)}>Import config.yml</Button>
-          <Button variant="primary" onClick={() => openCreateEditor()}>Create guardrail</Button>
+          <Button variant="primary" onClick={() => openCreateEditor()}>Add guardrail</Button>
         </div>
       </div>
       {savedGuardrail && (
-        <Alert variant="success" isInline title="Guardrail draft saved" className="studio-prototype-alert">
-          {savedGuardrail} is saved locally with no evaluation evidence yet.
+        <Alert variant="success" isInline title="Guardrail saved" className="studio-prototype-alert">
+          {savedGuardrail} is saved locally. No evaluation evidence is attached yet.
+        </Alert>
+      )}
+      {deletedGuardrailName && (
+        <Alert variant="info" isInline title="Retired guardrail deleted" className="studio-prototype-alert">
+          {deletedGuardrailName} was removed from the local catalog.
         </Alert>
       )}
       {evaluationRequest && (
@@ -3469,6 +3663,7 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
                   <FormSelectOption value="all" label="All lifecycle states" />
                   <FormSelectOption value="Published" label="Published" />
                   <FormSelectOption value="Draft" label="Draft" />
+                  <FormSelectOption value="Retired" label="Retired" />
                 </FormSelect>
               </ToolbarItem>
               <ToolbarItem>
@@ -3534,7 +3729,7 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
                       {enforcementPoints.length ? enforcementPoints.map((point) => <Label key={point} className="studio-derived-point">{enforcementPointLabel(point)}</Label>) : <span className="studio-muted">No rail flows</span>}
                     </Td>
                     <Td dataLabel="Lifecycle">
-                      <StatusLabel severity={definition.lifecycle === 'Published' ? 'success' : 'warning'}>
+                      <StatusLabel severity={definition.lifecycle === 'Published' ? 'success' : definition.lifecycle === 'Draft' ? 'warning' : 'info'}>
                         {definition.lifecycle} · {definition.version}
                       </StatusLabel>
                     </Td>
@@ -3587,42 +3782,207 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
       </Card>
       <Modal isOpen={createOpen} onClose={closeGuardrailEditor} variant="large" aria-labelledby="create-guardrail-title">
         <ModalHeader
-          title={editingDefinitionId ? 'Edit guardrail definition' : 'Create guardrail definition'}
+          title={createModalTitle}
           labelId="create-guardrail-title"
-          description={editingDefinitionId ? 'Edit the config.yml inline or replace it with an uploaded file. Saving a published version creates a new draft version.' : 'Create the guardrail by editing config.yml inline or importing an existing configuration file.'}
+          description={createModalDescription}
           descriptorId="guardrail-editor-description"
         />
         <ModalBody>
-          <Alert variant="info" isInline title="NeMo Guardrails configuration">
-            The YAML uses top-level sections such as <code>models</code>, <code>rails</code>, and <code>prompts</code>, with nested values and engine parameters. Edit the file directly or replace it from an upload.
-          </Alert>
-          <section className="studio-config-editor-section" aria-labelledby="guardrail-basics-heading">
-            <Title headingLevel="h3" size="md" id="guardrail-basics-heading">Definition details</Title>
-            <FormGroup label="Guardrail name" fieldId="guardrail-name" isRequired>
-              <TextInput isRequired id="guardrail-name" value={draft.name} onChange={(_event, value) => setDraft((current) => ({ ...current, name: value }))} placeholder="For example, PII output filter" />
-            </FormGroup>
-            <FormGroup label="Description" fieldId="guardrail-description">
-              <TextArea id="guardrail-description" value={draft.description} onChange={(_event, value) => setDraft((current) => ({ ...current, description: value }))} placeholder="Describe the risk or behavior this guardrail addresses." resizeOrientation="vertical" />
-            </FormGroup>
-          </section>
-          <section className="studio-config-editor-section" aria-labelledby="guardrail-yaml-heading">
-            <Title headingLevel="h3" size="md" id="guardrail-yaml-heading">Guardrail configuration</Title>
-            <Content component="small">Choose how to create or update the config.yml. Each option edits the same guardrail draft.</Content>
-            <Tabs activeKey={editorMode} onSelect={selectEditorMode} isSubtab aria-label="Guardrail configuration editing modes" className="studio-guardrail-editor-tabs">
-              <Tab eventKey="yaml" title={<TabTitleText>Edit YAML</TabTitleText>}>
-                <section className="studio-config-editor-section" aria-label="Inline YAML editor">
-                  <Alert variant="info" isInline title="Edit the complete configuration">
-                    Edit the full NeMo Guardrails config.yml directly. YAML is checked as you type; apply valid changes to update the draft.
+          {!editingDefinitionId && creationStage === 'landing' && (
+            <div className="studio-guardrail-create-landing">
+              <Content component="p">Choose how you want to create the guardrail configuration.</Content>
+              <div className="studio-guardrail-create-tiles" role="group" aria-label="Guardrail creation methods">
+                <button type="button" className="studio-guardrail-create-tile" onClick={() => chooseCreationPath('auto')}>
+                  <ShieldAltIcon className="studio-guardrail-create-tile-icon" aria-hidden="true" />
+                  <strong>Auto Generate</strong>
+                  <span>Select policy risks and generate a recommended guardrail configuration.</span>
+                </button>
+                <button type="button" className="studio-guardrail-create-tile" onClick={() => chooseCreationPath('yaml')}>
+                  <CodeBranchIcon className="studio-guardrail-create-tile-icon" aria-hidden="true" />
+                  <strong>Inline YAML Edit</strong>
+                  <span>Write or refine the complete config.yml in the editor.</span>
+                </button>
+                <button type="button" className="studio-guardrail-create-tile" onClick={() => chooseCreationPath('upload')}>
+                  <FileAltIcon className="studio-guardrail-create-tile-icon" aria-hidden="true" />
+                  <strong>Import config.yml</strong>
+                  <span>Upload or drop an existing YAML configuration file.</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {!editingDefinitionId && creationStage === 'risks' && (
+            <section className="studio-auto-generate-risks" aria-labelledby="guardrail-risk-selection-heading">
+              <div className="studio-config-section-heading">
+                <div>
+                  <Title headingLevel="h3" size="md" id="guardrail-risk-selection-heading">Select policy risks to mitigate</Title>
+                  <Content component="small">These risks come from the Policy mapping review. The generated YAML will use them to recommend enforcement points and prompts.</Content>
+                </div>
+                <Label color={selectedRiskRecords.length ? 'blue' : 'grey'}>{selectedRiskRecords.length} selected</Label>
+              </div>
+              <Toolbar id="guardrail-risk-selection-toolbar" aria-label="Search and paginate policy risks">
+                <ToolbarContent>
+                  <ToolbarItem>
+                    <SearchInput
+                      aria-label="Search policy risks by name"
+                      className="studio-auto-generate-risk-search"
+                      placeholder="Search risk name or clause"
+                      value={riskSearchQuery}
+                      resultsCount={filteredPolicyRisks.length}
+                      resultsCountContext=" matching policy risks"
+                      onChange={(_event, value) => {
+                        setRiskSearchQuery(value);
+                        setRiskPage(1);
+                      }}
+                      onClear={() => {
+                        setRiskSearchQuery('');
+                        setRiskPage(1);
+                      }}
+                    />
+                  </ToolbarItem>
+                  <ToolbarItem variant="pagination" align={{ default: 'alignEnd' }}>
+                    <Pagination
+                      variant="top"
+                      isCompact
+                      widgetId="guardrail-risk-selection-top"
+                      itemCount={filteredPolicyRisks.length}
+                      page={riskPage}
+                      perPage={riskPerPage}
+                      perPageOptions={[{ title: '10', value: 10 }, { title: '20', value: 20 }, { title: '50', value: 50 }]}
+                      titles={policyRiskPaginationTitles}
+                      onSetPage={onSetRiskPage}
+                      onPerPageSelect={onSetRiskPerPage}
+                    />
+                  </ToolbarItem>
+                </ToolbarContent>
+              </Toolbar>
+              <div className="studio-auto-generate-risk-list" role="group" aria-label="Policy mapping review risks">
+                {visiblePolicyRisks.map((item) => {
+                  const itemIndex = policyMappingRecords.indexOf(item);
+                  return (
+                    <div className="studio-auto-generate-risk-option" key={item.clause}>
+                      <Checkbox
+                        id={`generate-risk-${itemIndex}`}
+                        aria-label={`${item.risk}, ${item.clause}, ${item.status}`}
+                        isChecked={selectedRiskClauses.includes(item.clause)}
+                        onChange={(_event, checked) => toggleSelectedRisk(item.clause, checked)}
+                      />
+                      <label htmlFor={`generate-risk-${itemIndex}`}>
+                        <strong>{item.risk}</strong>
+                        <small>{item.clause} · {item.status}</small>
+                        <small className="studio-muted">{item.requirement}</small>
+                      </label>
+                    </div>
+                  );
+                })}
+                {visiblePolicyRisks.length === 0 && (
+                  <div className="studio-auto-generate-risk-empty">No policy risks match this search.</div>
+                )}
+              </div>
+              <div className="studio-auto-generate-pagination">
+                <span className="studio-pagination-page-indicator" aria-live="polite">{policyRiskPageLabel}</span>
+                <Pagination
+                  variant="bottom"
+                  isCompact
+                  widgetId="guardrail-risk-selection-bottom"
+                  itemCount={filteredPolicyRisks.length}
+                  page={riskPage}
+                  perPage={riskPerPage}
+                  perPageOptions={[{ title: '10', value: 10 }, { title: '20', value: 20 }, { title: '50', value: 50 }]}
+                  titles={policyRiskPaginationTitles}
+                  onSetPage={onSetRiskPage}
+                  onPerPageSelect={onSetRiskPerPage}
+                />
+              </div>
+            </section>
+          )}
+
+          {!editingDefinitionId && creationStage === 'generating' && (
+            <div className="studio-guardrail-generation-status" role="status" aria-live="polite">
+              <Spinner size="lg" aria-label="Generating recommended guardrail configuration" />
+              <div>
+                <Title headingLevel="h3" size="md">Generating a recommended guardrail</Title>
+                <Content component="p">Reviewing {selectedRiskRecords.length} selected policy {selectedRiskRecords.length === 1 ? 'risk' : 'risks'}, choosing enforcement points, and drafting the NeMo Guardrails YAML.</Content>
+                <Content component="small" className="studio-muted">This prototype simulates the generation step; exact progress is not available. This may take a moment.</Content>
+              </div>
+            </div>
+          )}
+
+          {!editingDefinitionId && creationStage === 'generated' && (
+            <section className="studio-generated-guardrail" aria-labelledby="generated-guardrail-heading">
+              <Alert variant="success" isInline title="Recommended configuration generated">
+                Review the recommendation before using it. Generated controls are saved as a draft and have no evaluation evidence yet.
+              </Alert>
+              <div className="studio-generated-guardrail-summary">
+                <Title headingLevel="h3" size="md" id="generated-guardrail-heading">{draft.name}</Title>
+                <Content component="p">{draft.description}</Content>
+                <Content component="small" className="studio-muted">
+                  {configToCatalogSummary(draft.config).rails.length} enforcement flows · {configToCatalogSummary(draft.config).prompts.length} prompts · {selectedRiskRecords.length} mapped risks
+                </Content>
+              </div>
+              <div className="studio-generated-risk-tags" aria-label="Risks addressed by this recommendation">
+                {selectedRiskRecords.map((item) => <Label key={item.clause}>{item.risk}</Label>)}
+              </div>
+            </section>
+          )}
+
+          {(editingDefinitionId || creationStage === 'editor') && (
+            <>
+              <Alert variant="info" isInline title="NeMo Guardrails configuration">
+                The YAML uses top-level sections such as <code>models</code>, <code>rails</code>, and <code>prompts</code>, with nested values and engine parameters.
+              </Alert>
+              <section className="studio-config-editor-section" aria-labelledby="guardrail-basics-heading">
+                <Title headingLevel="h3" size="md" id="guardrail-basics-heading">Definition details</Title>
+                <FormGroup label="Guardrail name" fieldId="guardrail-name" isRequired>
+                  <TextInput isRequired id="guardrail-name" value={draft.name} onChange={(_event, value) => setDraft((current) => ({ ...current, name: value }))} placeholder="For example, PII output filter" />
+                </FormGroup>
+                <FormGroup label="Description" fieldId="guardrail-description">
+                  <TextArea id="guardrail-description" value={draft.description} onChange={(_event, value) => setDraft((current) => ({ ...current, description: value }))} placeholder="Describe the risk or behavior this guardrail addresses." resizeOrientation="vertical" />
+                </FormGroup>
+                {editingDefinitionId && (
+                  <div className="studio-guardrail-lifecycle-editor">
+                    <FormGroup label="Lifecycle state" fieldId="guardrail-lifecycle-state">
+                      <FormSelect
+                        id="guardrail-lifecycle-state"
+                        aria-label="Guardrail lifecycle state"
+                        value={editingLifecycle}
+                        onChange={(_event, value) => {
+                          setEditingLifecycle(value as CatalogDefinition['lifecycle']);
+                          setConfirmDeleteGuardrail(false);
+                        }}
+                      >
+                        <FormSelectOption value="Draft" label="Draft" />
+                        <FormSelectOption value="Published" label="Published" />
+                        <FormSelectOption value="Retired" label="Retired" />
+                      </FormSelect>
+                      <Content component="small" className="studio-muted">
+                        Lifecycle changes are saved together with the guardrail configuration.
+                      </Content>
+                    </FormGroup>
+                  </div>
+                )}
+                {confirmDeleteGuardrail && (
+                  <Alert variant="warning" isInline title="Delete retired guardrail?">
+                    <Content component="p">{currentEditingDefinition?.name} will be removed from the catalog. This action cannot be undone.</Content>
+                    <div className="studio-guardrail-delete-confirm-actions">
+                      <Button variant="danger" onClick={deleteRetiredGuardrail} isDisabled={!canDeleteRetiredGuardrail}>Confirm delete</Button>
+                      <Button variant="link" onClick={() => setConfirmDeleteGuardrail(false)}>Keep guardrail</Button>
+                    </div>
                   </Alert>
+                )}
+              </section>
+              {editorMode === 'yaml' ? (
+                <section className="studio-config-editor-section" aria-labelledby="guardrail-yaml-heading">
+                  <Title headingLevel="h3" size="md" id="guardrail-yaml-heading">Guardrail configuration</Title>
+                  <Content component="small">Edit the full NeMo Guardrails config.yml directly. YAML is checked as you type and saved with the guardrail.</Content>
                   <div className="studio-yaml-editor-toolbar">
                     <div className="studio-yaml-editor-status" aria-live="polite">
                       <Label color={yamlEditorIsValid ? 'green' : 'red'}>{yamlEditorIsValid ? 'Valid YAML' : 'Needs correction'}</Label>
-                      <Content component="small">{yamlEditorLineCount} lines · Tab indents · Ctrl/Cmd+Enter applies</Content>
+                      <Content component="small">{yamlEditorLineCount} lines · Tab indents</Content>
                     </div>
                     <div className="studio-yaml-editor-actions">
                       <Button variant="link" onClick={resetInlineYaml}>Reset from draft</Button>
                       <Button variant="secondary" onClick={formatInlineYaml} isDisabled={!yamlEditorIsValid}>Format YAML</Button>
-                      <Button variant="primary" onClick={applyInlineYaml} isDisabled={!yamlEditorIsValid}>Apply to draft</Button>
                     </div>
                   </div>
                   <FormGroup label="config.yml" fieldId="guardrail-inline-yaml">
@@ -3643,10 +4003,10 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
                   {yamlEditorProblem && <Alert variant="danger" isInline title="YAML needs correction">{yamlEditorProblem}</Alert>}
                   {yamlEditorStatus && <Alert variant="success" isInline title="YAML editor updated">{yamlEditorStatus}</Alert>}
                 </section>
-              </Tab>
-              <Tab eventKey="upload" title={<TabTitleText>Upload config.yml</TabTitleText>}>
+              ) : (
                 <section className="studio-config-editor-section" aria-label="Upload or replace guardrail configuration">
-                  <Alert variant="info" isInline title={editingDefinitionId ? 'Import or replace this definition’s config.yml' : 'Import a config.yml to create this guardrail'}>
+                  <Title headingLevel="h3" size="md">Guardrail configuration</Title>
+                  <Alert variant="info" isInline title={editingDefinitionId ? 'Replace this definition’s config.yml' : 'Import a config.yml'}>
                     Uploading replaces the entire configuration tree in this draft. The guardrail name and description stay as entered.
                   </Alert>
                   <FormGroup label="YAML configuration file" fieldId="guardrail-config-upload">
@@ -3661,18 +4021,49 @@ function GuardrailsView({ onNavigate }: { onNavigate: (view: ViewId) => void }) 
                       onFileInputChange={(_event, file) => { void handleYamlUpload(file); }}
                       onClearClick={() => { setYamlUploadFile(null); setYamlUploadStatus(''); setYamlUploadError(''); }}
                     />
-                    <Content component="small" className="studio-muted">Accepted file extensions: .yml and .yaml</Content>
+                    <Content component="small" className="studio-muted">Choose or drop a .yml or .yaml file.</Content>
                   </FormGroup>
                   {yamlUploadStatus && <Alert variant="success" isInline title="Configuration imported">{yamlUploadStatus}</Alert>}
                   {yamlUploadError && <Alert variant="danger" isInline title="Could not import configuration">{yamlUploadError}</Alert>}
                 </section>
-              </Tab>
-            </Tabs>
-          </section>
+              )}
+            </>
+          )}
         </ModalBody>
         <ModalFooter>
-          <Button variant="primary" onClick={saveGuardrail} isDisabled={!draftIsValid || (editorMode === 'yaml' && !yamlEditorIsValid) || (editorMode === 'upload' && Boolean(yamlUploadError))}>{editingDefinitionId ? 'Save draft' : 'Create draft'}</Button>
-          <Button variant="link" onClick={closeGuardrailEditor}>Cancel</Button>
+          {(editingDefinitionId || creationStage === 'editor') && (
+            <>
+              <Button variant="primary" onClick={saveGuardrail} isDisabled={!canSaveGuardrail}>Save</Button>
+              {editingDefinitionId && canDeleteRetiredGuardrail && (
+                <Button variant="danger" onClick={() => setConfirmDeleteGuardrail(true)}>Delete guardrail</Button>
+              )}
+              {editorMode === 'upload' && yamlUploadStatus && !yamlUploadError && (
+                <Button variant="secondary" onClick={openYamlEditor}>View/edit YAML</Button>
+              )}
+              {!editingDefinitionId && <Button variant="link" onClick={backFromEditor}>Back to options</Button>}
+              <Button variant="link" onClick={closeGuardrailEditor}>Cancel</Button>
+            </>
+          )}
+          {!editingDefinitionId && creationStage === 'landing' && (
+            <Button variant="link" onClick={closeGuardrailEditor}>Cancel</Button>
+          )}
+          {!editingDefinitionId && creationStage === 'risks' && (
+            <>
+              <Button variant="primary" onClick={startGuardrailGeneration} isDisabled={selectedRiskRecords.length === 0}>Generate guardrail</Button>
+              <Button variant="link" onClick={() => setCreationStage('landing')}>Back to options</Button>
+              <Button variant="link" onClick={closeGuardrailEditor}>Cancel</Button>
+            </>
+          )}
+          {!editingDefinitionId && creationStage === 'generating' && (
+            <Button variant="link" onClick={() => setCreationStage('risks')}>Cancel generation</Button>
+          )}
+          {!editingDefinitionId && creationStage === 'generated' && (
+            <>
+              <Button variant="primary" onClick={saveGuardrail}>Save</Button>
+              <Button variant="secondary" onClick={openYamlEditor}>View/edit YAML</Button>
+              <Button variant="link" onClick={closeGuardrailEditor}>Cancel</Button>
+            </>
+          )}
         </ModalFooter>
       </Modal>
     </>
